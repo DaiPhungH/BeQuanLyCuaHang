@@ -1,11 +1,13 @@
 package com.example.TestNodo.service;
 
+import com.example.TestNodo.dto.CategoryDTO;
 import com.example.TestNodo.entity.Category;
 import com.example.TestNodo.entity.CategoryImage;
 import com.example.TestNodo.entity.Product;
 import com.example.TestNodo.entity.ProductImage;
 import com.example.TestNodo.repository.CategoryImageRepository;
 import com.example.TestNodo.repository.ProductImageRepository;
+import jakarta.validation.Valid;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.MessageSource;
 import org.springframework.context.i18n.LocaleContextHolder;
@@ -111,7 +113,7 @@ public class ImageService {
         }
     }
 
-    public void updateCategoryImages(List<MultipartFile> files, Category category) {
+    public void updateCategoryImages(List<MultipartFile> files, @Valid CategoryDTO categoryDTO, Category category) {
         if (files != null && !files.isEmpty()) {
             category.getImages().forEach(img -> img.setStatus("0"));
             categoryImageRepository.saveAll(category.getImages());

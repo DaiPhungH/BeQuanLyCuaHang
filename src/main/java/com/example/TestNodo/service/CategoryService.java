@@ -106,10 +106,13 @@ public class CategoryService {
 
     @Transactional
     public CategoryDTO updateCategory(Long id, @Valid CategoryDTO categoryDTO, List<MultipartFile> images) {
+        // 1. Tìm category theo ID
         Category category = categoryRepository.findById(id)
                 .orElseThrow(() -> new EntityNotFoundException(
                         messageSource.getMessage("category.not.found", null, LocaleContextHolder.getLocale())
                 ));
+
+        // 2. Kiểm tra trùng mã code nếu có thay đổi
         if (!category.getCategoryCode().equals(categoryDTO.getCategoryCode()) &&
                 categoryRepository.existsByCategoryCode(categoryDTO.getCategoryCode())) {
             throw new IllegalArgumentException(
@@ -117,6 +120,7 @@ public class CategoryService {
             );
         }
 
+        // 3. Cập nhật thông tin cơ bản
         category.setName(categoryDTO.getName());
         category.setCategoryCode(categoryDTO.getCategoryCode());
         category.setDescription(categoryDTO.getDescription());
@@ -124,10 +128,10 @@ public class CategoryService {
         category.setModifiedDate(LocalDateTime.now());
         category.setModifiedBy("admin");
 
-        // Sử dụng ImageService để cập nhật hình ảnh (lưu vào thư mục cục bộ và tạo URL mới)
-        imageService.updateCategoryImages(images, category);
+        // 4. Cập nhật hình ảnh (giữ lại, xoá, thêm mới)
+        imageService.updateCategoryImages(images, categoryDTO, category);
 
-        // Lưu category
+        // 5. Lưu category
         try {
             categoryRepository.save(category);
         } catch (Exception e) {
@@ -136,10 +140,12 @@ public class CategoryService {
             );
         }
 
+        // 6. Trả về DTO kèm danh sách ảnh
         CategoryDTO result = categoryMapper.toDTO(category);
         result.setImages(toImageDTOs(category.getImages()));
         return result;
     }
+
 
     @Transactional
     public void deleteCategory(Long id) {
@@ -154,12 +160,12 @@ public class CategoryService {
     }
 
     @Transactional(readOnly = true)
-    public Page<CategoryDTO> searchCategories(String name, String categoryCode, LocalDateTime createdFrom,
-                                              LocalDateTime createdTo, Pageable pageable) {
+    public Page<CategoryDTO> searchCategories(String name, String categoryCode,
+                                              LocalDateTime createdFrom, LocalDateTime createdTo, Pageable pageable) {
         Page<Category> categoryPage = categoryRepository.search(name, categoryCode, createdFrom, createdTo, pageable);
         return categoryPage.map(category -> {
             CategoryDTO dto = categoryMapper.toDTO(category);
-            dto.setImages(toImageDTOs(category.getImages()));
+            dto.setImages(toImageDTOs(category.getImages())); // không còn N+1
             return dto;
         });
     }
@@ -169,8 +175,8 @@ public class CategoryService {
     public byte[] exportCategoriesToExcel(String name, String categoryCode, LocalDateTime createdFrom, LocalDateTime createdTo, String lang) throws Exception {
         Locale locale = (lang != null && (lang.equals("en") || lang.equals("vi"))) ? new Locale(lang) : LocaleContextHolder.getLocale();
 
-        Page<Category> categoryPage = categoryRepository.search(name, categoryCode, createdFrom, createdTo,
-                PageRequest.of(0, Integer.MAX_VALUE));
+        List<Category> categories = categoryRepository.searchAll(name, categoryCode, createdFrom, createdTo);
+
         Workbook workbook = new XSSFWorkbook();
         Sheet sheet = workbook.createSheet("Categories");
 
@@ -193,7 +199,7 @@ public class CategoryService {
 
         // Data
         int rowNum = 1;
-        for (Category category : categoryPage.getContent()) {
+        for (Category category : categories) {
             Row row = sheet.createRow(rowNum++);
             row.createCell(0).setCellValue(category.getId());
             row.createCell(1).setCellValue(category.getName());
@@ -210,27 +216,26 @@ public class CategoryService {
             workbook.write(out);
         } catch (IOException e) {
             throw new RuntimeException(
-                    messageSource.getMessage("excel.export.failed", null, LocaleContextHolder.getLocale()) + ": " + e.getMessage(), e
+                    messageSource.getMessage("excel.export.failed", null, locale) + ": " + e.getMessage(), e
             );
+        } finally {
+            workbook.close();
         }
-        finally {
-            try {
-                workbook.close();
-            } catch (IOException e) {
-                // Ghi log lỗi nếu cần
-            }
-        }
+
         return out.toByteArray();
     }
 
+
     @Transactional(readOnly = true)
     public CategoryDTO getCategoryById(Long id) {
-        Category category = categoryRepository.findById(id)
+        Category category = categoryRepository.findByIdWithImages(id)
                 .orElseThrow(() -> new EntityNotFoundException(
                         messageSource.getMessage("category.not.found", null, LocaleContextHolder.getLocale())
                 ));
+
         CategoryDTO dto = categoryMapper.toDTO(category);
         dto.setImages(toImageDTOs(category.getImages()));
         return dto;
     }
+
 }
