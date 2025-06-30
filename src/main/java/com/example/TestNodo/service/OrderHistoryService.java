@@ -6,6 +6,7 @@ import com.example.TestNodo.entity.Order;
 import com.example.TestNodo.repository.OrderRepository;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDate;
 import java.time.LocalDateTime;
@@ -16,6 +17,7 @@ public class OrderHistoryService {
 
     @Autowired
     private OrderRepository orderRepo;
+    @Transactional(readOnly = true)
 
     public List<OrderHistoryDTO> getOrderHistory(String name, LocalDate from, LocalDate to) {
         LocalDateTime fromDateTime = from != null ? from.atStartOfDay() : null;

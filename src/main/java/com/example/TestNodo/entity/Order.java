@@ -9,6 +9,7 @@ import java.util.List;
 @Entity
 @Table(name = "orders")
 public class Order {
+
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
@@ -22,11 +23,7 @@ public class Order {
     @OneToMany(mappedBy = "order", cascade = CascadeType.ALL)
     private List<OrderItem> items = new ArrayList<>();
 
-    // Getter, Setter, Constructor
-
-
-    public Order() {
-    }
+    public Order() {}
 
     public Order(Long id, String customerName, LocalDateTime orderDate, Double totalAmount, List<OrderItem> items) {
         this.id = id;
@@ -36,43 +33,34 @@ public class Order {
         this.items = items;
     }
 
-    public Long getId() {
-        return id;
-    }
+    // ====== Getter / Setter ======
 
-    public void setId(Long id) {
-        this.id = id;
-    }
+    public Long getId() { return id; }
 
-    public String getCustomerName() {
-        return customerName;
-    }
+    public void setId(Long id) { this.id = id; }
 
-    public void setCustomerName(String customerName) {
-        this.customerName = customerName;
-    }
+    public String getCustomerName() { return customerName; }
 
-    public LocalDateTime getOrderDate() {
-        return orderDate;
-    }
+    public void setCustomerName(String customerName) { this.customerName = customerName; }
 
-    public void setOrderDate(LocalDateTime orderDate) {
-        this.orderDate = orderDate;
-    }
+    public LocalDateTime getOrderDate() { return orderDate; }
 
-    public Double getTotalAmount() {
-        return totalAmount;
-    }
+    public void setOrderDate(LocalDateTime orderDate) { this.orderDate = orderDate; }
 
-    public void setTotalAmount(Double totalAmount) {
-        this.totalAmount = totalAmount;
-    }
+    public Double getTotalAmount() { return totalAmount; }
 
-    public List<OrderItem> getItems() {
-        return items;
-    }
+    public void setTotalAmount(Double totalAmount) { this.totalAmount = totalAmount; }
 
-    public void setItems(List<OrderItem> items) {
-        this.items = items;
+    public List<OrderItem> getItems() { return items; }
+
+    public void setItems(List<OrderItem> items) { this.items = items; }
+
+    // ====== Logic mặc định nếu không nhập tên khách ======
+
+    @PrePersist
+    public void prePersist() {
+        if (this.customerName == null || this.customerName.trim().isEmpty()) {
+            this.customerName = "Ẩn danh";
+        }
     }
 }

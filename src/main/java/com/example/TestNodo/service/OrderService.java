@@ -24,7 +24,14 @@ public class OrderService {
     @Transactional
     public Order createOrder(CreateOrderDTO dto) {
         Order order = new Order();
-        order.setCustomerName(dto.getCustomerName());
+
+        // Gán tên khách hàng hoặc dùng mặc định nếu không nhập
+        String name = dto.getCustomerName();
+        if (name == null || name.trim().isEmpty()) {
+            name = "Ẩn danh"; // hoặc "Ẩn anh" nếu bạn muốn giữ nguyên như bạn viết
+        }
+        order.setCustomerName(name);
+
         order.setOrderDate(LocalDateTime.now());
 
         List<OrderItem> items = new ArrayList<>();
@@ -54,4 +61,5 @@ public class OrderService {
 
         return orderRepo.save(order);
     }
+
 }
