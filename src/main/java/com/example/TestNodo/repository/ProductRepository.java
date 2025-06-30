@@ -31,23 +31,23 @@ public interface ProductRepository extends JpaRepository<Product, Long> {
     Optional<Product> findByIdWithImages(@Param("id") Long id);
 
     @Query("""
-    SELECT DISTINCT p FROM Product p
-    LEFT JOIN FETCH p.productCategories pc
-    LEFT JOIN FETCH pc.category c
-    WHERE (:name IS NULL OR LOWER(p.name) LIKE LOWER(CONCAT('%', :name, '%')))
-      AND (:productCode IS NULL OR LOWER(p.productCode) LIKE LOWER(CONCAT('%', :productCode, '%')))
-      AND (:createdFrom IS NULL OR p.createdDate >= :createdFrom)
-      AND (:createdTo IS NULL OR p.createdDate <= :createdTo)
-      AND (:categoryId IS NULL OR EXISTS (
-            SELECT 1 FROM ProductCategory pc2
-            WHERE pc2.product = p AND pc2.category.id = :categoryId AND pc2.status = '1'
-      ))
-""")
+            SELECT DISTINCT p FROM Product p
+            LEFT JOIN FETCH p.productCategories pc
+            LEFT JOIN FETCH pc.category c
+            WHERE p.status = '1'
+              AND (:name IS NULL OR LOWER(p.name) LIKE LOWER(CONCAT('%', :name, '%')))
+              AND (:productCode IS NULL OR LOWER(p.productCode) LIKE LOWER(CONCAT('%', :productCode, '%')))
+              AND (:createdFrom IS NULL OR p.createdDate >= :createdFrom)
+              AND (:createdTo IS NULL OR p.createdDate <= :createdTo)
+              AND (:categoryId IS NULL OR EXISTS (
+                    SELECT 1 FROM ProductCategory pc2
+                    WHERE pc2.product = p AND pc2.category.id = :categoryId AND pc2.status = '1'
+              ))
+            """)
     List<Product> searchAllForExport(@Param("name") String name,
                                      @Param("productCode") String productCode,
                                      @Param("createdFrom") LocalDateTime createdFrom,
                                      @Param("createdTo") LocalDateTime createdTo,
                                      @Param("categoryId") Long categoryId);
-
 
 }
