@@ -17,8 +17,8 @@ public class OrderHistoryService {
 
     @Autowired
     private OrderRepository orderRepo;
-    @Transactional(readOnly = true)
 
+    @Transactional(readOnly = true)
     public List<OrderHistoryDTO> getOrderHistory(String name, LocalDate from, LocalDate to) {
         LocalDateTime fromDateTime = from != null ? from.atStartOfDay() : null;
         LocalDateTime toDateTime = to != null ? to.plusDays(1).atStartOfDay() : null;
