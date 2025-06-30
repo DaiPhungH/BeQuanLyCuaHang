@@ -18,6 +18,8 @@ import org.apache.poi.ss.usermodel.Row;
 import org.apache.poi.ss.usermodel.Sheet;
 import org.apache.poi.ss.usermodel.Workbook;
 import org.apache.poi.xssf.usermodel.XSSFWorkbook;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.MessageSource;
 import org.springframework.context.i18n.LocaleContextHolder;
@@ -33,10 +35,13 @@ import java.io.IOException;
 import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Locale;
+import java.util.Map;
 import java.util.stream.Collectors;
 
 @Service
 public class ProductService {
+    private static final Logger logger = LoggerFactory.getLogger(ProductService.class);
+
     private final ProductRepository productRepository;
     private final CategoryRepository categoryRepository;
     private final ProductCategoryRepository productCategoryRepository;
@@ -62,7 +67,9 @@ public class ProductService {
 
     @Transactional
     public ProductDTO createProduct(@Valid ProductDTO productDTO, List<MultipartFile> images, List<Long> categoryIds) {
+        logger.info("Creating product with code: {}", productDTO.getProductCode());
         if (productRepository.existsByProductCode(productDTO.getProductCode())) {
+            logger.error("Product code {} already exists", productDTO.getProductCode());
             throw new IllegalArgumentException(messageSource.getMessage("product.code.exists", null, LocaleContextHolder.getLocale()));
         }
         Product product = productMapper.toEntity(productDTO);
@@ -72,7 +79,9 @@ public class ProductService {
 
         try {
             product = productRepository.save(product);
+            logger.info("Product saved with ID: {}", product.getId());
         } catch (Exception e) {
+            logger.error("Failed to save product: {}", e.getMessage());
             throw new RuntimeException(
                     messageSource.getMessage("product.save.failed", null, LocaleContextHolder.getLocale()) + ": " + e.getMessage(), e
             );
@@ -85,7 +94,9 @@ public class ProductService {
 
         try {
             productRepository.save(product);
+            logger.info("Product with images and categories saved successfully for ID: {}", product.getId());
         } catch (Exception e) {
+            logger.error("Failed to save product with images/categories: {}", e.getMessage());
             throw new RuntimeException(
                     messageSource.getMessage("product.save.with.images.categories.failed", null, LocaleContextHolder.getLocale()) + ": " + e.getMessage(), e
             );
@@ -95,6 +106,9 @@ public class ProductService {
     }
 
     private List<ProductCategory> createProductCategories(Product product, List<Long> categoryIds) {
+        if (categoryIds == null || categoryIds.isEmpty()) {
+            return List.of();
+        }
         return categoryIds.stream().map(categoryId -> {
             Category category = categoryRepository.findByIdWithImages(categoryId)
                     .orElseThrow(() -> new EntityNotFoundException(messageSource.getMessage("category.not.found", null, LocaleContextHolder.getLocale())));
@@ -109,9 +123,11 @@ public class ProductService {
 
     @Transactional
     public ProductDTO updateProduct(Long id, @Valid ProductDTO productDTO, List<MultipartFile> images, List<Long> categoryIds) {
+        logger.info("Updating product with ID: {}", id);
         Product product = productRepository.findById(id)
                 .orElseThrow(() -> new EntityNotFoundException(messageSource.getMessage("product.not.found", null, LocaleContextHolder.getLocale())));
         if (!product.getProductCode().equals(productDTO.getProductCode()) && productRepository.existsByProductCode(productDTO.getProductCode())) {
+            logger.error("Product code {} already exists", productDTO.getProductCode());
             throw new IllegalArgumentException(messageSource.getMessage("product.code.exists", null, LocaleContextHolder.getLocale()));
         }
 
@@ -124,19 +140,23 @@ public class ProductService {
         product.setModifiedDate(LocalDateTime.now());
         product.setModifiedBy("admin");
 
-        if (images != null && !images.isEmpty()) {
-            imageService.updateProductImages(images, product);
+        if (images != null && !images.isEmpty() || (productDTO.getImages() != null && !productDTO.getImages().isEmpty())) {
+            imageService.updateProductImages(images, productDTO, product);
+            logger.info("Updated images for product ID: {}", id);
         }
 
         // Cập nhật danh mục
         if (categoryIds != null) {
             updateProductCategories(product, categoryIds);
+            logger.info("Updated categories for product ID: {}", id);
         }
 
         // Lưu product
         try {
             productRepository.save(product);
+            logger.info("Product updated successfully for ID: {}", id);
         } catch (Exception e) {
+            logger.error("Failed to update product: {}", e.getMessage());
             throw new RuntimeException(
                     messageSource.getMessage("product.update.failed", null, LocaleContextHolder.getLocale()) + ": " + e.getMessage(), e
             );
@@ -146,6 +166,9 @@ public class ProductService {
     }
 
     private void updateProductCategories(Product product, List<Long> categoryIds) {
+        if (categoryIds == null || categoryIds.isEmpty()) {
+            return;
+        }
         product.getProductCategories().forEach(pc -> pc.setStatus("0"));
         categoryIds.forEach(categoryId -> {
             Category category = categoryRepository.findByIdWithImages(categoryId)
@@ -169,19 +192,49 @@ public class ProductService {
 
     @Transactional
     public void deleteProduct(Long id) {
+        logger.info("Deleting product with ID: {}", id);
         Product product = productRepository.findById(id)
                 .orElseThrow(() -> new EntityNotFoundException(messageSource.getMessage("product.not.found", null, LocaleContextHolder.getLocale())));
         product.setStatus("0");
         product.setModifiedDate(LocalDateTime.now());
         product.setModifiedBy("admin");
-        productRepository.save(product);
+        try {
+            productRepository.save(product);
+            logger.info("Product deleted (soft) successfully for ID: {}", id);
+        } catch (Exception e) {
+            logger.error("Failed to delete product: {}", e.getMessage());
+            throw new RuntimeException(
+                    messageSource.getMessage("product.delete.failed", null, LocaleContextHolder.getLocale()) + ": " + e.getMessage(), e
+            );
+        }
     }
 
     @Transactional(readOnly = true)
     public Page<ProductDTO> searchProducts(String name, String productCode, LocalDateTime createdFrom,
                                            LocalDateTime createdTo, Long categoryId, Pageable pageable) {
+        logger.info("Searching products with name: {}, code: {}, categoryId: {}", name, productCode, categoryId);
+
+        // 1. Truy vấn sản phẩm theo điều kiện
         Page<Product> productPage = productRepository.search(name, productCode, createdFrom, createdTo, categoryId, pageable);
-        return productPage.map(this::toProductDTO);
+
+        // 2. Lấy danh sách ID sản phẩm
+        List<Long> productIds = productPage.getContent().stream()
+                .map(Product::getId)
+                .toList();
+
+        // 3. Lấy ảnh theo productId
+        List<ProductImage> allImages = productImageRepository.findActiveImagesByProductIds(productIds);
+
+        // 4. Nhóm ảnh theo productId
+        Map<Long, List<ProductImage>> imageMap = allImages.stream()
+                .collect(Collectors.groupingBy(img -> img.getProduct().getId()));
+
+        // 5. Gán ảnh vào DTO
+        return productPage.map(product -> {
+            ProductDTO dto = toProductDTO(product);
+            dto.setImages(toImageDTOs(imageMap.getOrDefault(product.getId(), List.of())));
+            return dto;
+        });
     }
 
 
@@ -214,8 +267,12 @@ public class ProductService {
     @Transactional(readOnly = true)
     public byte[] exportProductsToExcel(String name, String productCode, LocalDateTime createdFrom, LocalDateTime createdTo,
                                         Long categoryId, String lang) throws IOException {
+        logger.info("Exporting products to Excel with name: {}, code: {}, categoryId: {}", name, productCode, categoryId);
         Locale locale = (lang != null && (lang.equals("en") || lang.equals("vi"))) ? new Locale(lang) : LocaleContextHolder.getLocale();
-        Page<Product> productPage = productRepository.search(name, productCode, createdFrom, createdTo, categoryId, PageRequest.of(0, Integer.MAX_VALUE));
+
+        // ❌ Bỏ dùng PageRequest, dùng List thay thế
+        List<Product> products = productRepository.searchAllForExport(name, productCode, createdFrom, createdTo, categoryId);
+
         Workbook workbook = new XSSFWorkbook();
         Sheet sheet = workbook.createSheet("Products");
 
@@ -235,7 +292,7 @@ public class ProductService {
         }
 
         int rowNum = 1;
-        for (Product product : productPage.getContent()) {
+        for (Product product : products) {
             Row row = sheet.createRow(rowNum++);
             row.createCell(0).setCellValue(product.getId());
             row.createCell(1).setCellValue(product.getName());
@@ -245,7 +302,7 @@ public class ProductService {
             row.createCell(5).setCellValue(product.getCreatedDate().toString());
             row.createCell(6).setCellValue(product.getModifiedDate() != null ? product.getModifiedDate().toString() : "");
             String categories = product.getProductCategories().stream()
-                    .filter(pc -> pc.getStatus() != null && pc.getStatus().equals("1"))
+                    .filter(pc -> "1".equals(pc.getStatus()))
                     .map(pc -> pc.getCategory().getName())
                     .collect(Collectors.joining(", "));
             row.createCell(7).setCellValue(categories);
@@ -253,16 +310,23 @@ public class ProductService {
 
         try (ByteArrayOutputStream out = new ByteArrayOutputStream()) {
             workbook.write(out);
+            logger.info("Exported products to Excel successfully");
             return out.toByteArray();
         } finally {
             workbook.close();
         }
     }
 
+
     @Transactional(readOnly = true)
     public ProductDTO getProductById(Long id) {
-        return productRepository.findById(id)
-                .map(this::toProductDTO)
-                .orElseThrow(() -> new EntityNotFoundException(messageSource.getMessage("product.not.found", null, LocaleContextHolder.getLocale())));
+        logger.info("Fetching product with ID: {}", id);
+        Product product = productRepository.findByIdWithImages(id)
+                .orElseThrow(() -> new EntityNotFoundException(
+                        messageSource.getMessage("product.not.found", null, LocaleContextHolder.getLocale())
+                ));
+
+        return toProductDTO(product);
     }
+
 }

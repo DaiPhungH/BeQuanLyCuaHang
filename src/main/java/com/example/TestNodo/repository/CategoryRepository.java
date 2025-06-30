@@ -15,7 +15,7 @@ import java.util.Optional;
 public interface CategoryRepository extends JpaRepository<Category, Long> {
     boolean existsByCategoryCode(String categoryCode);
 
-    @Query("SELECT c FROM Category c LEFT JOIN FETCH c.images WHERE c.id = :id")
+    @Query("SELECT DISTINCT c FROM Category c LEFT JOIN FETCH c.images WHERE c.id = :id")
     Optional<Category> findByIdWithImages(@Param("id") Long id);
 
     @EntityGraph(attributePaths = "images")
@@ -35,8 +35,4 @@ public interface CategoryRepository extends JpaRepository<Category, Long> {
             "AND (:createdTo IS NULL OR c.createdDate <= :createdTo)")
     List<Category> searchAll(String name, String categoryCode,
                              LocalDateTime createdFrom, LocalDateTime createdTo);
-
-
-
-
 }

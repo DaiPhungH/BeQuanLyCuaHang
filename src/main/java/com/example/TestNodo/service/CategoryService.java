@@ -106,13 +106,11 @@ public class CategoryService {
 
     @Transactional
     public CategoryDTO updateCategory(Long id, @Valid CategoryDTO categoryDTO, List<MultipartFile> images) {
-        // 1. Tìm category theo ID
-        Category category = categoryRepository.findById(id)
+        Category category = categoryRepository.findByIdWithImages(id)
                 .orElseThrow(() -> new EntityNotFoundException(
                         messageSource.getMessage("category.not.found", null, LocaleContextHolder.getLocale())
                 ));
 
-        // 2. Kiểm tra trùng mã code nếu có thay đổi
         if (!category.getCategoryCode().equals(categoryDTO.getCategoryCode()) &&
                 categoryRepository.existsByCategoryCode(categoryDTO.getCategoryCode())) {
             throw new IllegalArgumentException(
@@ -120,7 +118,6 @@ public class CategoryService {
             );
         }
 
-        // 3. Cập nhật thông tin cơ bản
         category.setName(categoryDTO.getName());
         category.setCategoryCode(categoryDTO.getCategoryCode());
         category.setDescription(categoryDTO.getDescription());
@@ -128,23 +125,16 @@ public class CategoryService {
         category.setModifiedDate(LocalDateTime.now());
         category.setModifiedBy("admin");
 
-        // 4. Cập nhật hình ảnh (giữ lại, xoá, thêm mới)
+        // Cập nhật ảnh: chỉ thêm mới, không xóa cũ
         imageService.updateCategoryImages(images, categoryDTO, category);
 
-        // 5. Lưu category
-        try {
-            categoryRepository.save(category);
-        } catch (Exception e) {
-            throw new RuntimeException(
-                    messageSource.getMessage("category.update.failed", null, LocaleContextHolder.getLocale()) + ": " + e.getMessage(), e
-            );
-        }
+        categoryRepository.save(category);
 
-        // 6. Trả về DTO kèm danh sách ảnh
         CategoryDTO result = categoryMapper.toDTO(category);
         result.setImages(toImageDTOs(category.getImages()));
         return result;
     }
+
 
 
     @Transactional

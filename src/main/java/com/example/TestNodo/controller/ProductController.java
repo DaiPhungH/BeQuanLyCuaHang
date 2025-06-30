@@ -17,7 +17,6 @@ import org.springframework.web.multipart.MultipartFile;
 
 import java.time.LocalDateTime;
 import java.util.List;
-@CrossOrigin(origins = "http://localhost:5173") // Vue chạy tại đây
 @RestController
 @RequestMapping("/api/products")
 public class ProductController {
