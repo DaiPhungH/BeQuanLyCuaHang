@@ -50,4 +50,5 @@ public interface ProductRepository extends JpaRepository<Product, Long> {
                                      @Param("createdTo") LocalDateTime createdTo,
                                      @Param("categoryId") Long categoryId);
 
+
 }

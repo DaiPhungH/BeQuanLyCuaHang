@@ -13,6 +13,9 @@ public class WebConfig implements WebMvcConfigurer {
     public void addCorsMappings(CorsRegistry registry) {
         registry.addMapping("/api/**")
                 .allowedOrigins("*") // Hoặc chỉ định: http://192.168.1.100:5173
+                .allowedOrigins("http://localhost:5173")
+                .allowCredentials(true)
+
                 .allowedMethods("GET", "POST", "PUT", "DELETE");
     }
 
