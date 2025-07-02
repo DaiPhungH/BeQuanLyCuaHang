@@ -69,7 +69,7 @@ public class ImageService {
         List<ProductImage> productImages = files.stream().map(file -> {
             try {
                 validateImageFile(file);
-                String fileName = UUID.randomUUID().toString() + "_" + file.getOriginalFilename();
+                String fileName = UUID.randomUUID() + "_" + file.getOriginalFilename();
                 Path filePath = Paths.get(PRODUCT_UPLOAD_DIR + fileName);
                 Files.write(filePath, file.getBytes());
 
@@ -100,7 +100,7 @@ public class ImageService {
         List<CategoryImage> categoryImages = files.stream().map(file -> {
             try {
                 validateImageFile(file);
-                String fileName = UUID.randomUUID().toString() + "_" + file.getOriginalFilename();
+                String fileName = UUID.randomUUID() + "_" + file.getOriginalFilename();
                 Path filePath = Paths.get(CATEGORY_UPLOAD_DIR + fileName);
                 Files.write(filePath, file.getBytes());
 

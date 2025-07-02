@@ -104,8 +104,8 @@ public class ProductService {
 
         return toProductDTO(product);
     }
-
-    private List<ProductCategory> createProductCategories(Product product, List<Long> categoryIds) {
+    @Transactional
+    public List<ProductCategory> createProductCategories(Product product, List<Long> categoryIds) {
         if (categoryIds == null || categoryIds.isEmpty()) {
             return List.of();
         }
@@ -170,8 +170,8 @@ public class ProductService {
         return toProductDTO(product);
     }
 
-
-    private void updateProductCategories(Product product, List<Long> categoryIds) {
+    @Transactional
+    public void updateProductCategories(Product product, List<Long> categoryIds) {
         if (categoryIds == null || categoryIds.isEmpty()) {
             return;
         }
