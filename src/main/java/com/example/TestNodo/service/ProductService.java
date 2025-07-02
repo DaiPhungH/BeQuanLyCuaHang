@@ -122,36 +122,41 @@ public class ProductService {
     }
 
     @Transactional
-    public ProductDTO updateProduct(Long id, @Valid ProductDTO productDTO, List<MultipartFile> images, List<Long> categoryIds) {
+    public ProductDTO updateProduct(Long id, @Valid ProductDTO productDTO, List<MultipartFile> images,
+                                    List<String> deletedImageUuids, List<Long> categoryIds) {
         logger.info("Updating product with ID: {}", id);
-        Product product = productRepository.findById(id)
-                .orElseThrow(() -> new EntityNotFoundException(messageSource.getMessage("product.not.found", null, LocaleContextHolder.getLocale())));
-        if (!product.getProductCode().equals(productDTO.getProductCode()) && productRepository.existsByProductCode(productDTO.getProductCode())) {
-            logger.error("Product code {} already exists", productDTO.getProductCode());
-            throw new IllegalArgumentException(messageSource.getMessage("product.code.exists", null, LocaleContextHolder.getLocale()));
+
+        Product product = productRepository.findByIdWithImages(id)
+                .orElseThrow(() -> new EntityNotFoundException(
+                        messageSource.getMessage("product.not.found", null, LocaleContextHolder.getLocale())
+                ));
+
+        if (!product.getProductCode().equals(productDTO.getProductCode()) &&
+                productRepository.existsByProductCode(productDTO.getProductCode())) {
+            throw new IllegalArgumentException(
+                    messageSource.getMessage("product.code.exists", null, LocaleContextHolder.getLocale())
+            );
         }
 
+        // Cập nhật thông tin cơ bản
         product.setName(productDTO.getName());
         product.setProductCode(productDTO.getProductCode());
         product.setDescription(productDTO.getDescription());
-        product.setStatus(productDTO.getStatus());
         product.setPrice(productDTO.getPrice());
         product.setQuantity(productDTO.getQuantity());
+        product.setStatus(productDTO.getStatus());
         product.setModifiedDate(LocalDateTime.now());
         product.setModifiedBy("admin");
 
-        if (images != null && !images.isEmpty() || (productDTO.getImages() != null && !productDTO.getImages().isEmpty())) {
-            imageService.updateProductImages(images, productDTO, product);
-            logger.info("Updated images for product ID: {}", id);
-        }
+        // ✅ Cập nhật ảnh: thêm mới & đánh dấu xóa ảnh cũ
+        imageService.updateProductImages(images, deletedImageUuids, product);
 
-        // Cập nhật danh mục
+        // ✅ Cập nhật danh mục sản phẩm nếu có
         if (categoryIds != null) {
             updateProductCategories(product, categoryIds);
             logger.info("Updated categories for product ID: {}", id);
         }
 
-        // Lưu product
         try {
             productRepository.save(product);
             logger.info("Product updated successfully for ID: {}", id);
@@ -164,6 +169,7 @@ public class ProductService {
 
         return toProductDTO(product);
     }
+
 
     private void updateProductCategories(Product product, List<Long> categoryIds) {
         if (categoryIds == null || categoryIds.isEmpty()) {

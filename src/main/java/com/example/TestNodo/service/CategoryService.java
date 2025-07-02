@@ -18,7 +18,6 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.MessageSource;
 import org.springframework.context.i18n.LocaleContextHolder;
 import org.springframework.data.domain.Page;
-import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -105,12 +104,13 @@ public class CategoryService {
     }
 
     @Transactional
-    public CategoryDTO updateCategory(Long id, @Valid CategoryDTO categoryDTO, List<MultipartFile> images) {
+    public CategoryDTO updateCategory(Long id, @Valid CategoryDTO categoryDTO, List<MultipartFile> images, List<String> deletedImageUuids) {
         Category category = categoryRepository.findByIdWithImages(id)
                 .orElseThrow(() -> new EntityNotFoundException(
                         messageSource.getMessage("category.not.found", null, LocaleContextHolder.getLocale())
                 ));
 
+        // Kiểm tra mã danh mục không bị trùng nếu thay đổi
         if (!category.getCategoryCode().equals(categoryDTO.getCategoryCode()) &&
                 categoryRepository.existsByCategoryCode(categoryDTO.getCategoryCode())) {
             throw new IllegalArgumentException(
@@ -118,6 +118,7 @@ public class CategoryService {
             );
         }
 
+        // Cập nhật thông tin cơ bản
         category.setName(categoryDTO.getName());
         category.setCategoryCode(categoryDTO.getCategoryCode());
         category.setDescription(categoryDTO.getDescription());
@@ -125,11 +126,13 @@ public class CategoryService {
         category.setModifiedDate(LocalDateTime.now());
         category.setModifiedBy("admin");
 
-        // Cập nhật ảnh: chỉ thêm mới, không xóa cũ
-        imageService.updateCategoryImages(images, categoryDTO, category);
+        // ✅ Gọi hàm cập nhật ảnh: có xoá ảnh cũ (theo UUID) và thêm ảnh mới
+        imageService.updateCategoryImages(images, deletedImageUuids, category);
 
+        // Lưu lại category
         categoryRepository.save(category);
 
+        // Convert sang DTO và gắn danh sách ảnh mới
         CategoryDTO result = categoryMapper.toDTO(category);
         result.setImages(toImageDTOs(category.getImages()));
         return result;

@@ -34,7 +34,34 @@ public class CategoryDTO {
 
     private List<ImageDTO> images;
 
+    private List<String> deleteImageUuids; // hoặc List<Long> nếu bạn dùng ID
+
+
     // Getters and Setters
+
+    public CategoryDTO() {}
+    public CategoryDTO(Long id, String name, String categoryCode, String description, String status,
+                       LocalDateTime createdDate, LocalDateTime modifiedDate, String createdBy,
+                       String modifiedBy, List<ImageDTO> images) {
+        this.id = id;
+        this.name = name;
+        this.categoryCode = categoryCode;
+        this.description = description;
+        this.status = status;
+        this.createdDate = createdDate;
+        this.modifiedDate = modifiedDate;
+        this.createdBy = createdBy;
+        this.modifiedBy = modifiedBy;
+        this.images = images;
+    }
+
+    public List<String> getDeleteImageUuids() {
+        return deleteImageUuids;
+    }
+    public void setDeleteImageUuids(List<String> deleteImageUuids) {
+        this.deleteImageUuids = deleteImageUuids;
+    }
+
     public Long getId() {
         return id;
     }

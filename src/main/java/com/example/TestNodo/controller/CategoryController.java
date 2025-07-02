@@ -43,23 +43,25 @@ public class CategoryController {
     public ResponseEntity<CategoryDTO> updateCategory(
             @PathVariable Long id,
             @RequestPart("category") @Valid CategoryDTO categoryDTO,
-            @RequestPart(value = "images", required = false) List<MultipartFile> images) {
-        CategoryDTO updatedCategory = categoryService.updateCategory(id, categoryDTO, images);
+            @RequestPart(value = "images", required = false) List<MultipartFile> images,
+            @RequestPart(value = "deletedImageUuids", required = false) List<String> deletedImageUuids) {
+        CategoryDTO updatedCategory = categoryService.updateCategory(id, categoryDTO, images, deletedImageUuids);
         return ResponseEntity.ok(updatedCategory);
     }
+
     @DeleteMapping("/{id}")
     public ResponseEntity<Void> deleteCategory(@PathVariable Long id) {
         categoryService.deleteCategory(id);
         return ResponseEntity.noContent().build();
     }
+
     @GetMapping("/search")
     public Page<CategoryDTO> searchCategories(
             @RequestParam(required = false) String name,
             @RequestParam(required = false) String categoryCode,
             @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) LocalDateTime createdFrom,
             @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) LocalDateTime createdTo,
-            @PageableDefault(page = 0, size = 10, sort = "id", direction = Sort.Direction.ASC) Pageable pageable)
-    {
+            @PageableDefault(page = 0, size = 10, sort = "id", direction = Sort.Direction.ASC) Pageable pageable) {
         return categoryService.searchCategories(name, categoryCode, createdFrom, createdTo, pageable);
     }
 
@@ -67,7 +69,6 @@ public class CategoryController {
     public ResponseEntity<CategoryDTO> getCategoryById(@PathVariable Long id) {
         CategoryDTO category = categoryService.getCategoryById(id);
         return ResponseEntity.ok(category);
-
     }
 
     @GetMapping("/export")

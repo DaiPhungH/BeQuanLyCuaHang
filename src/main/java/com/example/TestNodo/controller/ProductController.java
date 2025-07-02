@@ -37,15 +37,18 @@ public class ProductController {
         return ResponseEntity.ok(createdProduct);
     }
 
-    @PutMapping(value = "/{id}", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
+    @PutMapping("/{id}")
     public ResponseEntity<ProductDTO> updateProduct(
             @PathVariable Long id,
             @RequestPart("product") @Valid ProductDTO productDTO,
             @RequestPart(value = "images", required = false) List<MultipartFile> images,
+            @RequestPart(value = "deletedImageUuids", required = false) List<String> deletedImageUuids,
             @RequestPart(value = "categoryIds", required = false) List<Long> categoryIds) {
-        ProductDTO updatedProduct = productService.updateProduct(id, productDTO, images, categoryIds);
-        return ResponseEntity.ok(updatedProduct);
+
+        ProductDTO updated = productService.updateProduct(id, productDTO, images, deletedImageUuids, categoryIds);
+        return ResponseEntity.ok(updated);
     }
+
 
     @DeleteMapping("/{id}")
     public ResponseEntity<Void> deleteProduct(@PathVariable Long id) {
